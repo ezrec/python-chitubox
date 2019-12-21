@@ -27,7 +27,7 @@ def _progress(filename="", offset=0, total=1):
         sys.stdout.write("\n")
 
 
-def cli(argv=[]):
+def cli():
     """Command line interface to ChuTuBox LCD Printers
     """
 
@@ -46,7 +46,7 @@ def cli(argv=[]):
 
     parser.add_argument("files", nargs="*")
 
-    args = parser.parse_args(argv)
+    args = parser.parse_args(sys.argv[1:])
 
     session = chitubox.session.Session(ip=args.ip)
     session.progress = _progress
@@ -88,4 +88,4 @@ def cli(argv=[]):
 
 
 if __name__ == "__main__":
-    sys.exit(cli(sys.argv[1:]))
+    sys.exit(cli())

@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="chitubox",
-    version="0.1.2",
+    version="0.1.3",
     author="Jason S. McMullan",
     author_email="jason.mcmullan@gmail.com",
     description="Utility to manage networked ChiTuBox based LCD Resin printers",
@@ -25,7 +25,7 @@ setuptools.setup(
     include_package_data=False,
     entry_points={
         "console_scripts": [
-            "chitucli=chitubox:cli"
+            "chitucli=chitubox.__main__:cli"
         ],
     }
 )
