@@ -25,7 +25,7 @@ setuptools.setup(
     include_package_data=False,
     entry_points={
         "console_scripts": [
-            "chitubox=chitubox:cli"
+            "chitucli=chitubox:cli"
         ],
     }
 )
