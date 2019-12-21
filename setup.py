@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="chitubox",
-    version="0.1",
+    version="0.1.0",
     author="Jason S. McMullan",
     author_email="jason.mcmullan@gmail.com",
     description="Utility to manage networked ChiTuBox based LCD Resin printers",
@@ -20,6 +20,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    python_requires='>=3.5',
     zip_safe=True,
     include_package_data=False,
     entry_points = {
