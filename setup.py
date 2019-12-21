@@ -23,7 +23,7 @@ setuptools.setup(
     python_requires='>=3.5',
     zip_safe=True,
     include_package_data=False,
-    entry_points = {
+    entry_points={
         "console_scripts": [
             "chitubox=chitubox:cli"
         ],

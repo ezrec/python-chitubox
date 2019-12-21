@@ -8,6 +8,7 @@ import sys
 
 import chitubox.session
 
+
 def _human_value(value):
     if value < 2048:
         return str(value) + "b"
@@ -18,13 +19,21 @@ def _human_value(value):
     else:
         return "%.2f" % (value / 1024 / 1024 / 1024) + "Gb"
 
-def cli(argv = []):
+
+def _progress(filename="", offset=0, total=1):
+    sys.stdout.write("%s: %s/%s\r" %
+                     (filename, _human_value(offset), _human_value(total)))
+    if offset == total:
+        sys.stdout.write("\n")
+
+
+def cli(argv=[]):
     """Command line interface to ChuTuBox LCD Printers
     """
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--ip","-i", action="store", required=True)
+    parser.add_argument("--ip", "-i", action="store", required=True)
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--list", "-L", action="store_true", default=False)
@@ -40,6 +49,7 @@ def cli(argv = []):
     args = parser.parse_args(argv)
 
     session = chitubox.session.Session(ip=args.ip)
+    session.progress = _progress
 
     if args.list:
         fileset = session.list("/", recurse=True)
@@ -47,7 +57,8 @@ def cli(argv = []):
             print(fname, _human_value(length))
     elif args.query:
         config = session.query_config()
-        print("Resolution: x:%.4f, y:%.4f, z:%.5f mm" % (config['X'], config['Y'], config['Z']))
+        print("Resolution: x:%.4f, y:%.4f, z:%.5f mm" %
+              (config['X'], config['Y'], config['Z']))
         try:
             status = session.print_status()
             print(status)
@@ -74,6 +85,7 @@ def cli(argv = []):
         return 255
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(cli(sys.argv[1:]))

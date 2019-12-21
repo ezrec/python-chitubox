@@ -7,13 +7,19 @@ import os
 
 import chitubox.network
 
+
+def _progress(filename="", offset=0, size=0):
+    pass
+
+
 class Session(object):
     """Start a ChiTuBox session
     """
 
-    def __init__(self, ip = None):
+    def __init__(self, ip=None):
         self._net = chitubox.network.Udp()
-        self._net.connect(ip = ip)
+        self._net.connect(ip=ip)
+        self.progress = _progress
 
         # Read the config
         config = self.query_config()
@@ -70,8 +76,8 @@ class Session(object):
         return result, fieldset
 
     def gcode(self, gcode="", fields=True):
-        self._net.command(gcode = gcode)
-        return self.response(fields = fields, command=gcode)
+        self._net.command(gcode=gcode)
+        return self.response(fields=fields, command=gcode)
 
     def list(self, root="/", recurse=False):
         result, fields = self.gcode("M20 '" + root + "'")
@@ -86,7 +92,7 @@ class Session(object):
 
         for x in result[1:-1]:
             if x.startswith("->"):
-                flist += self.list(os.path.join(root,x[2:]))
+                flist += self.list(os.path.join(root, x[2:]))
             else:
                 f, s = x.rsplit(" ", 2)
                 s = int(s)
@@ -95,7 +101,7 @@ class Session(object):
         return flist
 
     def query_version(self):
-        result, _ = self.gcode("M4002", fields = False)
+        result, _ = self.gcode("M4002", fields=False)
 
         return result[-1].split(" ", 2)[1]
 
@@ -139,7 +145,8 @@ class Session(object):
                 check ^= x
 
             if check != csum:
-                raise RuntimeError("Checksum failed (%02x != %02x) at offset %d" % (check, csum, curr))
+                raise RuntimeError(
+                    "Checksum failed (%02x != %02x) at offset %d" % (check, csum, curr))
 
             if verify != 0x83:
                 raise RuntimeError("Verification failed at offset %d" % (curr))
@@ -151,6 +158,8 @@ class Session(object):
             curr += len(block)
             fd.write(block)
 
+            self.progress(filename, curr, length)
+
         self.gcode("M22")
 
     def upload(self, filename=None, fd=None):
@@ -158,6 +167,8 @@ class Session(object):
         self.gcode("M22")
         result, fields = self.gcode("M28 " + filename)
 
+        length = fd.seek(0, 2)
+        fd.seek(0)
         while True:
             offset = fd.tell()
             block = fd.read(0x500)
@@ -172,8 +183,13 @@ class Session(object):
 
             block += struct.pack("<BB", check, 0x83)
             self._net.send(block)
-            result,fields = self.response(fields=False, command="Upload @%d" % (offset))
+            result, fields = self.response(
+                fields=False, command="Upload @%d" % (offset))
             if len(result) > 0 and result[0] == "resend":
                 fd.seek(fields["offset"])
+
+            self.progress(filename, offset, length)
+
+        self.progress(filename, length, length)
 
         result, fields = self.gcode("M29")

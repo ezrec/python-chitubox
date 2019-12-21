@@ -4,9 +4,11 @@
 
 import socket
 
+
 class Udp(object):
     """Create a UDP socket connection to a ChiTuBox LCD printer (Anycubic Photon, EPAX X1, etc)
     """
+
     def __init__(self):
         self._socket = None
         self._send_ip = None
@@ -29,7 +31,8 @@ class Udp(object):
         else:
             self._send_ip = ip
 
-            sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM, proto=0)
+            sock = socket.socket(family=socket.AF_INET,
+                                 type=socket.SOCK_DGRAM, proto=0)
             sock.connect((self._send_ip, self._send_port))
             self._socket = sock
             self._mtu = 1500
