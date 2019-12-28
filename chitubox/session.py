@@ -124,13 +124,18 @@ class Session(object):
         return fields
 
     def start_print(self, filename=None):
-        result, fields = self.gcode("M6030 '" + filename + "'")
+        result, fields = self.gcode("M6030 ':" + filename + "'")
         return fields
+
+    def delete(self, filename=None):
+        result, fields = self.gcode("M30 " + filename)
+        return result
 
     def download(self, filename=None, fd=None):
         # Abort any prior download
         self.gcode("M22")
-        result, fields = self.gcode("M6032 '" + filename + "'")
+        result, fields = self.gcode("M6032 :'" + filename + "'")
+        print(filename, result, fields)
         length = fields['L']
 
         # Download data

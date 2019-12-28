@@ -43,6 +43,7 @@ def cli():
     group.add_argument("--print", "-P", action="store_true", default=False)
     group.add_argument("--upload", "-U", action="store_true", default=False)
     group.add_argument("--download", "-D", action="store_true", default=False)
+    group.add_argument("--delete", "-X", action="store_true", default=False)
 
     parser.add_argument("files", nargs="*")
 
@@ -52,7 +53,7 @@ def cli():
     session.progress = _progress
 
     if args.list:
-        fileset = session.list("/", recurse=True)
+        fileset = session.list(recurse=True)
         for fname, length in fileset:
             print(fname, _human_value(length))
     elif args.query:
@@ -71,15 +72,27 @@ def cli():
     elif args.version:
         print(session.query_version())
     elif args.print:
-        print(session.start_print(args.print))
+        assert(len(args.files) == 1)
+        print(session.start_print(args.files[0]))
+    elif args.delete:
+        for filename in args.files:
+            print(session.delete(filename))
     elif args.upload:
         for filename in args.files:
-            with open(filename, "rb") as fd:
-                session.upload(os.path.basename(filename), fd)
+            src = filename
+            dst = os.path.basename(filename)
+            if ':' in src:
+                src, dst = filename.split(":", 2)
+            with open(src, "rb") as fd:
+                session.upload(dst, fd)
     elif args.download:
         for filename in args.files:
-            with open(os.path.basename(filename), "wb") as fd:
-                session.download(filename, fd)
+            src = filename
+            dst = os.path.basename(filename)
+            if ':' in src:
+                src, dst = filename.split(":", 2)
+            with open(dst, "wb") as fd:
+                session.download(src, fd)
     else:
         parser.help()
         return 255
