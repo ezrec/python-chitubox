@@ -8,24 +8,27 @@ import os
 import chitubox.network
 
 
-def _progress(filename="", offset=0, size=0):
-    pass
-
 
 class Session(object):
     """Start a ChiTuBox session
     """
 
-    def __init__(self, ip=None):
+    def __init__(self, ip=None, progress = None):
         self._net = chitubox.network.Udp()
         self._net.connect(ip=ip)
-        self.progress = _progress
+        self._progress = progress
+        self._progress_interval = 32
 
         # Read the config
         config = self.query_config()
 
         # Update the network session's encoding to match the remote
         self._net.encoding(config['U'])
+
+    def progress(self, filename="", offset=0, size=0):
+        if self._progress is not None:
+            if offset == size or ((offset % (0x500 * self._progress_interval)) == 0):
+                self._progress(filename=filename, offset=offset, size=size)
 
     def _parse_value(self, val=""):
         if len(val) == 0:
@@ -49,13 +52,16 @@ class Session(object):
             fields[attr] = self._parse_value(val)
         return fields
 
-    def response(self, fields=True, command=""):
+    def response(self, fields=True, comment=""):
         result = []
         fieldset = {}
         while True:
-            resp = self._net.response().strip()
+            resp = self._net.response()
+            if resp == None:
+                return None, {}
+            resp = resp.strip()
             if resp.startswith("Error"):
-                raise RuntimeError(command + ": " + resp)
+                raise RuntimeError(comment + ": " + resp)
             if resp.startswith("resend "):
                 offset, rest = resp.split(",")
                 dummy, offset = offset.split(" ")
@@ -75,12 +81,27 @@ class Session(object):
                 result.append(resp)
         return result, fieldset
 
-    def gcode(self, gcode="", fields=True):
+    def send_gcode(self, gcode="", fields=True):
         self._net.command(gcode=gcode)
-        return self.response(fields=fields, command=gcode)
+        return self.response(fields=fields, comment=gcode)
+
+    def recv_block(self, offset=0):
+        block = None
+        while block is None:
+            self._net.command("M3000 I%d" % (offset))
+            block = self._net.recv()
+        return block
+
+    def send_block(self, block=b"", comment=""):
+        result = None
+        fields = {}
+        while result is None:
+            self._net.send(block)
+            result, fields = self.response(fields=False, comment=comment)
+        return result, fields
 
     def list(self, root="/", recurse=False):
-        result, fields = self.gcode("M20 '" + root + "'")
+        result, fields = self.send_gcode("M20 '" + root + "'")
         if len(result) < 2:
             raise RuntimeError("M20: Response too short")
         elif result[0] != 'Begin file list':
@@ -101,48 +122,47 @@ class Session(object):
         return flist
 
     def query_version(self):
-        result, _ = self.gcode("M4002", fields=False)
+        result, _ = self.send_gcode("M4002", fields=False)
 
         return result[-1].split(" ", 2)[1]
 
     def query_config(self):
-        result, fields = self.gcode("M4001")
+        result, fields = self.send_gcode("M4001")
 
         return fields
 
     def query_status(self):
-        result, fields = self.gcode("M4000")
+        result, fields = self.send_gcode("M4000")
         return fields
 
     def print_status(self):
-        result, fields = self.gcode("M27")
+        result, fields = self.send_gcode("M27")
 
         return fields
 
     def query_axes(self):
-        result, fields = self.gcode("M114")
+        result, fields = self.send_gcode("M114")
         return fields
 
     def start_print(self, filename=None):
-        result, fields = self.gcode("M6030 ':" + filename + "'")
+        result, fields = self.send_gcode("M6030 ':" + filename + "'")
         return fields
 
     def delete(self, filename=None):
-        result, fields = self.gcode("M30 " + filename)
+        result, fields = self.send_gcode("M30 " + filename)
         return result
 
     def download(self, filename=None, fd=None):
         # Abort any prior download
-        self.gcode("M22")
-        result, fields = self.gcode("M6032 :'" + filename + "'")
+        self.send_gcode("M22")
+        result, fields = self.send_gcode("M6032 :'" + filename + "'")
         print(filename, result, fields)
         length = fields['L']
 
         # Download data
         curr = 0
         while curr < length:
-            self._net.command("M3000 I%d" % (curr))
-            block = self._net.recv()
+            block = self.recv_block(offset=curr)
             offset, csum, verify = struct.unpack("<LBB", block[-6:])
 
             check = 0
@@ -165,12 +185,12 @@ class Session(object):
 
             self.progress(filename, curr, length)
 
-        self.gcode("M22")
+        self.send_gcode("M22")
 
     def upload(self, filename=None, fd=None):
         # Abort any prior download
-        self.gcode("M22")
-        result, fields = self.gcode("M28 " + filename)
+        self.send_gcode("M22")
+        result, fields = self.send_gcode("M28 " + filename)
 
         length = fd.seek(0, 2)
         fd.seek(0)
@@ -187,9 +207,7 @@ class Session(object):
                 check ^= x
 
             block += struct.pack("<BB", check, 0x83)
-            self._net.send(block)
-            result, fields = self.response(
-                fields=False, command="Upload @%d" % (offset))
+            result, fields = self.send_block(block=block, comment="Upload @%d" % (offset))
             if len(result) > 0 and result[0] == "resend":
                 fd.seek(fields["offset"])
 
@@ -197,4 +215,4 @@ class Session(object):
 
         self.progress(filename, length, length)
 
-        result, fields = self.gcode("M29")
+        result, fields = self.send_gcode("M29")

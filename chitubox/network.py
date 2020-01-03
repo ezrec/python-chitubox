@@ -34,6 +34,7 @@ class Udp(object):
             sock = socket.socket(family=socket.AF_INET,
                                  type=socket.SOCK_DGRAM, proto=0)
             sock.connect((self._send_ip, self._send_port))
+            sock.settimeout(0.25) # 250ms
             self._socket = sock
             self._mtu = 1500
 
@@ -61,7 +62,12 @@ class Udp(object):
         if not self._socket:
             raise RuntimeError("No remote session to printer")
 
-        return self._socket.recv(self._mtu)
+        try:
+            resp = self._socket.recv(self._mtu)
+        except socket.timeout as e:
+            return None
+
+        return resp
 
     def send(self, data=b''):
         if not self._socket:
@@ -76,5 +82,8 @@ class Udp(object):
         self.send(data + b'\x00\x00')
 
     def response(self):
-        resp = self._socket.recv(self._mtu)
+        resp = self.recv()
+        if resp is None:
+            return None
+
         return resp.decode(self._encoding)

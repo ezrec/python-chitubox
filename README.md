@@ -4,7 +4,7 @@ Tool to interact with the ChiTuBoard based networked LCD Resin printer
 
 ```
 usage: chitucli [-h] --ip IP
-                [--list | --query | --axis-z | --version | --print | --upload | --download]
+                [--list | --query | --axis-z | --version | --print | --upload | --download | --delete]
                 [files [files ...]]
 
 positional arguments:
@@ -20,4 +20,5 @@ optional arguments:
   --print, -P
   --upload, -U
   --download, -D
+  --delete, -X
 ```

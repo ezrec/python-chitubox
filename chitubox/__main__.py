@@ -20,10 +20,10 @@ def _human_value(value):
         return "%.2f" % (value / 1024 / 1024 / 1024) + "Gb"
 
 
-def _progress(filename="", offset=0, total=1):
+def _progress(filename="", offset=0, size=1):
     sys.stdout.write("%s: %s/%s\r" %
-                     (filename, _human_value(offset), _human_value(total)))
-    if offset == total:
+                     (filename, _human_value(offset), _human_value(size)))
+    if offset == size:
         sys.stdout.write("\n")
 
 
@@ -49,8 +49,7 @@ def cli():
 
     args = parser.parse_args(sys.argv[1:])
 
-    session = chitubox.session.Session(ip=args.ip)
-    session.progress = _progress
+    session = chitubox.session.Session(ip=args.ip, progress = _progress)
 
     if args.list:
         fileset = session.list(recurse=True)
